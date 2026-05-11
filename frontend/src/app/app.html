@@ -1,0 +1,351 @@
+<main class="app-shell">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Recruitment Assistant</p>
+      <h1>AI-assisted shortlist review</h1>
+    </div>
+    <div class="status-cluster" aria-live="polite">
+      @if (backendOnline() === true) {
+        <p-tag severity="success" value="Backend online" />
+      } @else if (backendOnline() === false) {
+        <p-tag severity="warn" value="Demo fallback" />
+      } @else {
+        <p-tag severity="info" value="Checking API" />
+      }
+      <p-tag severity="info" value="Human approval required" />
+    </div>
+  </header>
+
+  <section class="workflow-strip" aria-label="Workflow progress">
+    @for (step of ['Job', 'Criteria', 'Source', 'Preview', 'Run', 'Approval']; track step; let index = $index) {
+      <div class="workflow-step" [class.is-active]="activeStep() >= index + 1">
+        <span>{{ index + 1 }}</span>
+        <strong>{{ step }}</strong>
+      </div>
+    }
+  </section>
+
+  @if (errorMessage()) {
+    <p-message severity="error" [text]="errorMessage()" />
+  }
+
+  <div class="workspace">
+    <section class="primary-column">
+      <p-card class="panel-card">
+        <ng-template #title>Job requirement</ng-template>
+        <ng-template #subtitle>Capture role criteria from recruiter-approved input.</ng-template>
+        <form [formGroup]="jobForm" class="form-grid">
+          <label>
+            <span>Role title</span>
+            <input pInputText formControlName="title" autocomplete="off" />
+            @if (jobForm.controls.title.invalid && jobForm.controls.title.touched) {
+              <small>Role title is required.</small>
+            }
+          </label>
+
+          <label>
+            <span>Seniority</span>
+            <p-select formControlName="seniority" [options]="seniorityOptions" optionLabel="label" optionValue="value" />
+          </label>
+
+          <label class="wide">
+            <span>Description</span>
+            <textarea pTextarea formControlName="description" rows="5" [autoResize]="true"></textarea>
+            @if (jobForm.controls.description.invalid && jobForm.controls.description.touched) {
+              <small>Add enough job context to support useful criteria extraction.</small>
+            }
+          </label>
+
+          <label>
+            <span>Required skills</span>
+            <input pInputText formControlName="requiredSkills" autocomplete="off" />
+          </label>
+
+          <label>
+            <span>Preferred skills</span>
+            <input pInputText formControlName="preferredSkills" autocomplete="off" />
+          </label>
+
+          <label>
+            <span>Location or work arrangement</span>
+            <input pInputText formControlName="location" autocomplete="off" />
+          </label>
+
+          <label>
+            <span>Max candidates</span>
+            <p-inputnumber formControlName="maxCandidates" [min]="1" [max]="10" [showButtons]="true" />
+          </label>
+        </form>
+
+        <div class="actions">
+          <p-button label="Review criteria" icon="pi pi-check-circle" (onClick)="extractCriteria()" />
+        </div>
+      </p-card>
+
+      @if (criteria(); as reviewedCriteria) {
+        <p-card class="panel-card">
+          <ng-template #title>Criteria review</ng-template>
+          <ng-template #subtitle>Recruiter checkpoint before candidates are evaluated.</ng-template>
+
+          <div class="criteria-grid">
+            <div>
+              <span class="field-label">Required</span>
+              <div class="tag-row">
+                @for (skill of reviewedCriteria.required_skills; track skill) {
+                  <p-tag [value]="skill" severity="success" />
+                }
+              </div>
+            </div>
+            <div>
+              <span class="field-label">Preferred</span>
+              <div class="tag-row">
+                @for (skill of reviewedCriteria.preferred_skills; track skill) {
+                  <p-tag [value]="skill" severity="info" />
+                }
+              </div>
+            </div>
+            <div>
+              <span class="field-label">Seniority</span>
+              <strong>{{ reviewedCriteria.seniority || 'Unknown' }}</strong>
+            </div>
+            <div>
+              <span class="field-label">Location</span>
+              <strong>{{ reviewedCriteria.location || 'Unknown' }}</strong>
+            </div>
+          </div>
+
+          @if (reviewedCriteria.ambiguities.length) {
+            <div class="message-stack">
+              @for (warning of reviewedCriteria.ambiguities; track warning) {
+                <p-message severity="warn" [text]="warning" />
+              }
+            </div>
+          }
+
+          <div [formGroup]="reviewForm">
+            <label class="check-row">
+              <p-checkbox formControlName="criteriaConfirmed" [binary]="true" inputId="criteriaConfirmed" />
+              <span>I reviewed these criteria and want to use them for candidate evaluation.</span>
+            </label>
+          </div>
+        </p-card>
+      }
+
+      <p-card class="panel-card">
+        <ng-template #title>Candidate source</ng-template>
+        <ng-template #subtitle>Only seeded or recruiter-provided data is used in the MVP.</ng-template>
+        <form [formGroup]="sourceForm" class="source-grid">
+          <div class="radio-cluster" role="radiogroup" aria-label="Candidate source type">
+            @for (source of sourceTypes; track source.value) {
+              <label class="radio-card" [class.is-selected]="sourceType === source.value">
+                <p-radioButton formControlName="type" [inputId]="source.value" [value]="source.value" />
+                <span>{{ source.label }}</span>
+              </label>
+            }
+          </div>
+
+          @if (sourceType === 'seeded') {
+            <label>
+              <span>Seeded dataset</span>
+              <p-select formControlName="datasetId" [options]="datasetOptions" optionLabel="label" optionValue="value" />
+            </label>
+          }
+
+          @if (sourceType === 'pasted') {
+            <label class="wide">
+              <span>Pasted candidate profiles</span>
+              <textarea pTextarea formControlName="pastedProfiles" rows="7" [autoResize]="true"></textarea>
+            </label>
+          }
+
+          @if (sourceType === 'uploaded') {
+            <p-message severity="warn" text="Uploaded text parsing is deferred until the backend parser is implemented." />
+          }
+        </form>
+
+        <div class="actions">
+          <p-button label="Preview candidates" icon="pi pi-users" severity="secondary" (onClick)="previewCandidates()" />
+        </div>
+      </p-card>
+
+      @if (candidates().length) {
+        <p-card class="panel-card">
+          <ng-template #title>Candidate preview</ng-template>
+          <ng-template #subtitle>Review source labels and missing data before running the workflow.</ng-template>
+          <p-table [value]="candidates()" [tableStyle]="{ 'min-width': '44rem' }" class="compact-table">
+            <ng-template #header>
+              <tr>
+                <th>Name</th>
+                <th>Summary</th>
+                <th>Skills</th>
+                <th>Missing data</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-candidate>
+              <tr>
+                <td>
+                  <strong>{{ candidate.display_name }}</strong>
+                  <span class="muted">{{ candidate.location }}</span>
+                </td>
+                <td>{{ candidate.profile_summary }}</td>
+                <td>
+                  <div class="tag-row">
+                    @for (skill of candidate.skills; track skill) {
+                      <p-tag [value]="skill" severity="info" />
+                    }
+                  </div>
+                </td>
+                <td>
+                  <ul class="plain-list">
+                    @for (item of candidate.missing_data; track item) {
+                      <li>{{ item }}</li>
+                    }
+                  </ul>
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+
+          <div class="actions">
+            <p-button label="Run recommendations" icon="pi pi-sparkles" (onClick)="runWorkflow()" />
+          </div>
+        </p-card>
+      }
+    </section>
+
+    <aside class="side-column">
+      <p-card class="panel-card">
+        <ng-template #title>Run progress</ng-template>
+        <p-progressBar [value]="progressValue()" [showValue]="false" />
+        <p class="run-state">{{ runStatus() }}</p>
+        @if (runResult()?.warnings?.length) {
+          <div class="message-stack">
+            @for (warning of runResult()?.warnings; track warning.code) {
+              <p-message severity="warn" [text]="warning.message" />
+            }
+          </div>
+        }
+      </p-card>
+
+      @if (runResult(); as result) {
+        <p-card class="panel-card">
+          <ng-template #title>Ranked shortlist</ng-template>
+          <div class="shortlist">
+            @for (candidate of result.ranked_shortlist; track candidate.candidate_id) {
+              <button class="shortlist-row" type="button" (click)="openDetails(candidate)">
+                <span class="rank">{{ candidate.rank }}</span>
+                <span>
+                  <strong>{{ candidate.display_name }}</strong>
+                  <small>{{ candidate.overall_score }} score</small>
+                </span>
+                <p-tag [value]="candidate.fit_label" [severity]="severityForFit(candidate.fit_label)" />
+              </button>
+            }
+          </div>
+        </p-card>
+
+        <p-card class="panel-card">
+          <ng-template #title>Approval</ng-template>
+          <form [formGroup]="approvalForm" class="approval-form">
+            <div class="radio-cluster compact" role="radiogroup" aria-label="Approval decision">
+              @for (option of approvalOptions; track option.value) {
+                <label class="radio-card" [class.is-selected]="approvalForm.controls.status.value === option.value">
+                  <p-radioButton formControlName="status" [inputId]="option.value" [value]="option.value" />
+                  <span>{{ option.label }}</span>
+                </label>
+              }
+            </div>
+            <label>
+              <span>Reviewer notes or override rationale</span>
+              <textarea pTextarea formControlName="reviewerNotes" rows="5" [autoResize]="true"></textarea>
+            </label>
+          </form>
+          <div class="actions">
+            <p-button label="Save approval" icon="pi pi-save" severity="secondary" (onClick)="recordApproval()" />
+          </div>
+          <p-tag [value]="result.approval.status" [severity]="approvalSeverity(result.approval.status)" />
+        </p-card>
+
+        <p-card class="panel-card">
+          <ng-template #title>Report preview</ng-template>
+          <p class="report-text">{{ result.report.summary_markdown }}</p>
+          <p-message severity="info" [text]="result.report.disclosure" />
+        </p-card>
+      }
+    </aside>
+  </div>
+
+  <p-drawer
+    [visible]="detailOpen()"
+    (visibleChange)="detailOpen.set($event)"
+    position="right"
+    header="Candidate details"
+    class="detail-drawer"
+  >
+    @if (selectedRecommendation(); as recommendation) {
+      <section class="drawer-section">
+        <p-tag [value]="'Rank ' + recommendation.rank" severity="info" />
+        <h2>{{ recommendation.display_name }}</h2>
+        <p class="lead">{{ recommendation.recommendation_rationale }}</p>
+        <div class="score-band">
+          <strong>{{ recommendation.overall_score }}</strong>
+          <span>overall score</span>
+          <p-tag [value]="recommendation.fit_label" [severity]="severityForFit(recommendation.fit_label)" />
+        </div>
+      </section>
+
+      <p-tabs value="0">
+        <p-tablist>
+          <p-tab value="0">Evidence</p-tab>
+          <p-tab value="1">Scores</p-tab>
+          <p-tab value="2">Next step</p-tab>
+        </p-tablist>
+        <p-tabpanels>
+          <p-tabpanel value="0">
+            <h3>Strengths</h3>
+            <ul>
+              @for (item of recommendation.strengths; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+            <h3>Gaps</h3>
+            <ul>
+              @for (item of recommendation.gaps; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+            <h3>Unknowns</h3>
+            <ul>
+              @for (item of recommendation.unknowns; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          </p-tabpanel>
+          <p-tabpanel value="1">
+            @if (selectedEvaluation; as evaluation) {
+              <div class="score-list">
+                @for (score of evaluation.component_scores | keyvalue; track score.key) {
+                  <div>
+                    <span>{{ score.key.replace('_', ' ') }}</span>
+                    <strong>{{ score.value }}</strong>
+                  </div>
+                }
+              </div>
+            }
+          </p-tabpanel>
+          <p-tabpanel value="2">
+            <p>{{ recommendation.suggested_next_step }}</p>
+            @if (selectedCandidate(); as candidate) {
+              <h3>Source labels</h3>
+              <div class="tag-row">
+                @for (source of candidate.source_labels; track source) {
+                  <p-tag [value]="source" severity="secondary" />
+                }
+              </div>
+            }
+          </p-tabpanel>
+        </p-tabpanels>
+      </p-tabs>
+    }
+  </p-drawer>
+</main>
