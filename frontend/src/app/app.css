@@ -130,6 +130,10 @@ h1 {
   line-height: 1.4;
 }
 
+:host ::ng-deep .focus-card {
+  scroll-margin-top: 18px;
+}
+
 .form-grid,
 .source-grid,
 .criteria-grid {

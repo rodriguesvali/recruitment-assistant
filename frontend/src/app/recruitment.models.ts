@@ -85,10 +85,16 @@ export interface RecruitmentRunResult {
 
 export interface WorkflowRequest {
   job: JobRequirement;
+  criteria?: EvaluationCriteria;
   candidate_source: CandidateSource;
   options: {
     max_candidates: number;
     score_style: 'numeric_and_label';
     require_recruiter_checkpoints: boolean;
   };
+}
+
+export interface CandidatePreviewResponse {
+  candidates: CandidateProfile[];
+  warnings: WorkflowWarning[];
 }

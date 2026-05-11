@@ -26,6 +26,16 @@ def test_run_recommendations_seeded() -> None:
                 "location": "Remote",
             },
             "candidate_source": {"type": "seeded", "dataset_id": "backend_engineers"},
+            "criteria": {
+                "title": "Backend Engineer",
+                "description": "Build Python FastAPI services for a recruiter-facing AI workflow.",
+                "required_skills": ["Python", "FastAPI"],
+                "preferred_skills": ["CrewAI", "PostgreSQL"],
+                "seniority": "Senior",
+                "location": "Remote",
+                "ambiguities": [],
+                "confirmed_by_recruiter": True,
+            },
             "options": {
                 "max_candidates": 3,
                 "score_style": "numeric_and_label",
@@ -37,5 +47,6 @@ def test_run_recommendations_seeded() -> None:
     payload = response.json()
     assert response.status_code == 200
     assert payload["status"] == "complete"
+    assert payload["criteria"]["confirmed_by_recruiter"] is True
     assert payload["ranked_shortlist"]
     assert payload["report"]["disclosure"]

@@ -34,7 +34,7 @@ class RecruitmentWorkflowService:
         return CandidatePreviewResponse(candidates=research.candidates, warnings=research.warnings)
 
     def run(self, request: WorkflowRequest) -> RecruitmentRunResult:
-        criteria = self.criteria_service.extract(request.job)
+        criteria = request.criteria or self.criteria_service.extract(request.job)
         warnings: list[WorkflowWarning] = []
         warnings.extend(
             WorkflowWarning(code="CRITERIA_AMBIGUITY", message=ambiguity) for ambiguity in criteria.ambiguities

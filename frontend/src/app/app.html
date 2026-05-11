@@ -78,12 +78,17 @@
         </form>
 
         <div class="actions">
-          <p-button label="Review criteria" icon="pi pi-check-circle" (onClick)="extractCriteria()" />
+          <p-button
+            [label]="criteria() ? 'Update criteria' : 'Review criteria'"
+            icon="pi pi-check-circle"
+            [loading]="runStatus() === 'validating'"
+            (onClick)="extractCriteria()"
+          />
         </div>
       </p-card>
 
       @if (criteria(); as reviewedCriteria) {
-        <p-card class="panel-card">
+        <p-card id="criteria-review" class="panel-card focus-card">
           <ng-template #title>Criteria review</ng-template>
           <ng-template #subtitle>Recruiter checkpoint before candidates are evaluated.</ng-template>
 
@@ -159,7 +164,16 @@
           }
 
           @if (sourceType === 'uploaded') {
-            <p-message severity="warn" text="Uploaded text parsing is deferred until the backend parser is implemented." />
+            <label class="wide">
+              <span>Uploaded plain text</span>
+              <textarea
+                pTextarea
+                formControlName="uploadedText"
+                rows="7"
+                [autoResize]="true"
+                placeholder="Paste the text content from an approved uploaded profile file."
+              ></textarea>
+            </label>
           }
         </form>
 
@@ -168,10 +182,25 @@
         </div>
       </p-card>
 
+      @if (previewWarnings().length && candidates().length === 0) {
+        <div id="candidate-source-warnings" class="message-stack">
+          @for (warning of previewWarnings(); track warning) {
+            <p-message severity="warn" [text]="warning" />
+          }
+        </div>
+      }
+
       @if (candidates().length) {
-        <p-card class="panel-card">
+        <p-card id="candidate-preview" class="panel-card focus-card">
           <ng-template #title>Candidate preview</ng-template>
           <ng-template #subtitle>Review source labels and missing data before running the workflow.</ng-template>
+          @if (previewWarnings().length) {
+            <div class="message-stack">
+              @for (warning of previewWarnings(); track warning) {
+                <p-message severity="warn" [text]="warning" />
+              }
+            </div>
+          }
           <p-table [value]="candidates()" [tableStyle]="{ 'min-width': '44rem' }" class="compact-table">
             <ng-template #header>
               <tr>
@@ -228,7 +257,7 @@
       </p-card>
 
       @if (runResult(); as result) {
-        <p-card class="panel-card">
+        <p-card id="ranked-shortlist" class="panel-card focus-card">
           <ng-template #title>Ranked shortlist</ng-template>
           <div class="shortlist">
             @for (candidate of result.ranked_shortlist; track candidate.candidate_id) {

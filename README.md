@@ -133,7 +133,7 @@ Outputs:
 
 ## Getting Started
 
-This repository is currently in the Define phase. Product and planning artifacts are present, while backend and frontend implementation are still to be built.
+The MVP now includes a FastAPI backend and an Angular + PrimeNG frontend.
 
 ### Prerequisites
 
@@ -147,16 +147,51 @@ For the current Define-phase repository state, contributors need:
 
 ### Installation
 
-No production runtime or dependency manifest is configured yet. Use these steps as a starting point for Build-phase setup:
+Install backend and frontend dependencies:
 
 ```bash
 git clone <repo-url>
 cd recruitment-assistant
-python -m venv .venv
-source .venv/bin/activate
+python -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install -r backend/requirements.txt
+cd frontend
+npm install
+cd ..
 ```
 
-Install backend or frontend dependencies after they are added to the repository. Expected future setup files may include `requirements.txt`, `pyproject.toml`, `package.json`, or equivalent dependency manifests.
+### Run Locally
+
+Use the root launch scripts:
+
+```bash
+./scripts/start-backend.sh
+./scripts/start-frontend.sh
+```
+
+Or start both in one terminal:
+
+```bash
+./scripts/start-dev.sh
+```
+
+Default URLs:
+
+- Frontend: `http://localhost:4200`
+- Backend: `http://localhost:8000`
+
+Ports can be changed with environment variables:
+
+```bash
+BACKEND_PORT=8001 FRONTEND_PORT=4300 ./scripts/start-dev.sh
+```
+
+VS Code launchers are also available:
+
+- Run Task: `Backend: FastAPI`
+- Run Task: `Frontend: Angular`
+- Run Task: `Full stack: Frontend + Backend`
+- Run and Debug: `Full stack: Frontend + Backend`
 
 ### Basic Usage
 

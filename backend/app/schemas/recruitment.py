@@ -128,6 +128,7 @@ class WorkflowOptions(BaseModel):
 
 class WorkflowRequest(BaseModel):
     job: JobRequirement
+    criteria: EvaluationCriteria | None = None
     candidate_source: CandidateSource
     options: WorkflowOptions = Field(default_factory=WorkflowOptions)
 

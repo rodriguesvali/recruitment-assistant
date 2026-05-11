@@ -4,6 +4,7 @@ import { Observable, catchError, delay, map, of, timeout } from 'rxjs';
 import {
   CandidateEvaluation,
   CandidateProfile,
+  CandidatePreviewResponse,
   CandidateSource,
   EvaluationCriteria,
   JobRequirement,
@@ -36,16 +37,29 @@ export class RecruitmentApiService {
     );
   }
 
-  previewCandidates(criteria: EvaluationCriteria, source: CandidateSource): Observable<CandidateProfile[]> {
+  previewCandidates(criteria: EvaluationCriteria, source: CandidateSource): Observable<CandidatePreviewResponse> {
     return this.http
-      .post<{ candidates: CandidateProfile[] }>(`${API_BASE_URL}/api/candidates/preview`, {
+      .post<CandidatePreviewResponse>(`${API_BASE_URL}/api/candidates/preview`, {
         criteria,
         candidate_source: source
       })
       .pipe(
         timeout(10000),
-        map((response) => response.candidates ?? []),
-        catchError(() => of(this.createFallbackCandidates(source)).pipe(delay(450)))
+        map((response) => ({
+          candidates: response.candidates ?? [],
+          warnings: response.warnings ?? []
+        })),
+        catchError(() =>
+          of({
+            candidates: this.createFallbackCandidates(source),
+            warnings: [
+              {
+                code: 'DEMO_FALLBACK',
+                message: 'Backend API was unavailable, so deterministic local candidate preview is shown.'
+              }
+            ]
+          }).pipe(delay(450))
+        )
       );
   }
 
@@ -86,8 +100,13 @@ export class RecruitmentApiService {
   }
 
   private createFallbackCandidates(source: CandidateSource): CandidateProfile[] {
-    if (source.type === 'pasted' && source.pasted_profiles?.trim()) {
-      return source.pasted_profiles
+    const textProfiles =
+      source.type === 'pasted' ? source.pasted_profiles : source.type === 'uploaded' ? source.uploaded_text : null;
+
+    if (textProfiles?.trim()) {
+      const sourceLabel = source.type === 'uploaded' ? 'uploaded-text' : 'pasted-profile';
+
+      return textProfiles
         .split(/\n\s*\n/)
         .filter(Boolean)
         .slice(0, 6)
@@ -99,9 +118,9 @@ export class RecruitmentApiService {
             display_name: firstLine.replace(/[:|-].*$/, '').trim() || `Pasted Candidate ${index + 1}`,
             profile_summary: profile.trim().slice(0, 220),
             skills: this.extractCandidateSkills(profile),
-            experience: ['Experience inferred from pasted recruiter-provided profile text.'],
+            experience: ['Experience inferred from recruiter-provided profile text.'],
             location: 'Unknown',
-            source_labels: ['pasted-profile'],
+            source_labels: [sourceLabel],
             missing_data: ['Availability unknown', 'Compensation expectations unknown']
           };
         });

@@ -60,6 +60,7 @@ export class App implements OnInit {
   readonly backendOnline = signal<boolean | null>(null);
   readonly criteria = signal<EvaluationCriteria | null>(null);
   readonly candidates = signal<CandidateProfile[]>([]);
+  readonly previewWarnings = signal<string[]>([]);
   readonly runResult = signal<RecruitmentRunResult | null>(null);
   readonly runStatus = signal<RunStatus>('idle');
   readonly selectedCandidate = signal<CandidateProfile | null>(null);
@@ -110,7 +111,8 @@ export class App implements OnInit {
     datasetId: ['backend_engineers'],
     pastedProfiles: [
       'Avery Chen: Python, FastAPI, CrewAI, PostgreSQL. Built API services and LLM workflow tools.\n\nJordan Patel: Angular, TypeScript, Python, FastAPI. Built recruiter dashboards and ATS integrations.'
-    ]
+    ],
+    uploadedText: ['']
   });
 
   readonly reviewForm = this.fb.nonNullable.group({
@@ -191,7 +193,7 @@ export class App implements OnInit {
       type: value.type as CandidateSource['type'],
       dataset_id: value.type === 'seeded' ? value.datasetId : null,
       pasted_profiles: value.type === 'pasted' ? value.pastedProfiles : null,
-      uploaded_text: null
+      uploaded_text: value.type === 'uploaded' ? value.uploadedText : null
     };
   }
 
@@ -208,8 +210,12 @@ export class App implements OnInit {
     this.api.extractCriteria(this.buildJob()).subscribe({
       next: (criteria) => {
         this.criteria.set(criteria);
+        this.candidates.set([]);
+        this.previewWarnings.set([]);
+        this.runResult.set(null);
         this.reviewForm.controls.criteriaConfirmed.setValue(criteria.ambiguities.length === 0);
         this.runStatus.set('idle');
+        this.scrollToSection('criteria-review');
       },
       error: () => this.fail('Criteria extraction failed. Check the backend or revise the job input.')
     });
@@ -229,17 +235,16 @@ export class App implements OnInit {
       return;
     }
 
-    if (this.sourceType === 'uploaded') {
-      this.errorMessage.set('Uploaded text parsing is deferred for the MVP frontend. Use seeded data or pasted profiles.');
-      return;
-    }
-
     this.errorMessage.set('');
+    this.previewWarnings.set([]);
     this.runStatus.set('researching');
     this.api.previewCandidates({ ...criteria, confirmed_by_recruiter: true }, this.buildSource()).subscribe({
-      next: (candidates) => {
-        this.candidates.set(candidates);
+      next: (response) => {
+        this.candidates.set(response.candidates);
+        this.previewWarnings.set(response.warnings.map((warning) => warning.message));
+        this.runResult.set(null);
         this.runStatus.set('idle');
+        this.scrollToSection(response.candidates.length ? 'candidate-preview' : 'candidate-source-warnings');
       },
       error: () => this.fail('Candidate preview failed. Try seeded data or revise pasted profiles.')
     });
@@ -255,6 +260,7 @@ export class App implements OnInit {
 
     const request: WorkflowRequest = {
       job: this.buildJob(),
+      criteria: { ...criteria, confirmed_by_recruiter: true },
       candidate_source: this.buildSource(),
       options: {
         max_candidates: this.jobForm.controls.maxCandidates.value,
@@ -275,13 +281,15 @@ export class App implements OnInit {
           reviewerNotes: result.approval.reviewer_notes ?? ''
         });
         this.runStatus.set('complete');
+        this.scrollToSection('ranked-shortlist');
       },
       error: () => this.fail('Recommendation workflow failed. Preserve your inputs and retry.')
     });
   }
 
   openDetails(recommendation: RankedRecommendation): void {
-    const candidate = this.candidates().find((profile) => profile.candidate_id === recommendation.candidate_id) ?? null;
+    const candidate =
+      this.runResult()?.candidates.find((profile) => profile.candidate_id === recommendation.candidate_id) ?? null;
     this.selectedCandidate.set(candidate);
     this.selectedRecommendation.set(recommendation);
     this.detailOpen.set(true);
@@ -333,6 +341,15 @@ export class App implements OnInit {
   private fail(message: string): void {
     this.runStatus.set('failed');
     this.errorMessage.set(message);
+  }
+
+  private scrollToSection(id: string): void {
+    window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 0);
   }
 
   private toList(value: string): string[] {

@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend: FastAPI",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "./scripts/start-backend.sh",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Frontend: Angular",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm start -- --host 0.0.0.0 --port 4200",
+      "cwd": "${workspaceFolder}/frontend"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack: Frontend + Backend",
+      "configurations": [
+        "Backend: FastAPI",
+        "Frontend: Angular"
+      ],
+      "stopAll": true
+    }
+  ]
+}
