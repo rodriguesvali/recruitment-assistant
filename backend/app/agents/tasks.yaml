@@ -1,0 +1,9 @@
+research_candidates:
+  description: Normalize approved candidate input into structured candidate profiles.
+  expected_output: Candidate profiles with source labels and missing-data notes.
+evaluate_candidates:
+  description: Score candidates against role criteria and identify strengths, gaps, and unknowns.
+  expected_output: Candidate evaluations with component scores and rationale.
+recommend_candidates:
+  description: Rank evaluated candidates and prepare recruiter-reviewable recommendations.
+  expected_output: Ranked shortlist with rationale, caveats, next steps, and disclosure.
