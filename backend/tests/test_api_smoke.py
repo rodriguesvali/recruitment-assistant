@@ -43,6 +43,19 @@ def test_health() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_cors_allows_documented_frontend_fallback_port() -> None:
+    response = client.options(
+        "/health",
+        headers={
+            "Origin": "http://127.0.0.1:4300",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:4300"
+
+
 def test_run_recommendations_seeded() -> None:
     response = client.post("/api/recommendations/run", json=recommendation_request())
 
