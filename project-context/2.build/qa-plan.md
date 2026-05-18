@@ -33,6 +33,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | AC-09 | Frontend builds and renders the primary app shell. | Passed |
 | AC-10 | Full browser e2e interaction is automated. | Not run |
 | AC-11 | Workflow stepper clearly reflects approval as the final human-review state. | Passed |
+| AC-12 | Run progress clearly reflects completion after ranked shortlist generation. | Failed |
 
 ## Test Scenarios
 
@@ -56,6 +57,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | TC-FE-002 | Angular production build. | Build completes without errors. | Build completed to `frontend/dist/frontend`. | Passed |
 | TC-FE-003 | Frontend dev server smoke. | Serves Angular shell. | Served `index.html` with `<app-root>` on `127.0.0.1:4300`. | Passed with issue |
 | TC-FE-004 | Save approval after selecting `Approved`. | Approval status updates and the workflow stepper activates the final `Approval` step. | Fixed on 2026-05-18. `activeStep` now returns `5` while approval is pending and `6` once `approval.status` is no longer `pending`; frontend tests cover both states. | Passed |
+| TC-FE-005 | Complete recommendation run and review the Run progress panel. | Progress bar reaches 100% and state reads `complete` once the ranked shortlist is available. | Failed in browser observation on 2026-05-18: ranked shortlist was visible, but progress stayed around 86% and state read `Recommending`. Static review found a delayed timer that can overwrite `complete` with `recommending`. | Failed |
 | TC-E2E-001 | Live backend HTTP workflow. | Local server handles run and approval over HTTP. | Uvicorn handled health, run, and approval calls successfully. | Passed |
 
 ## Execution Log
@@ -84,6 +86,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | QA-003 | Low | API semantics | Approval endpoint returns success for unknown `run_id` instead of returning `404`. This can make a mistyped or stale run approval look saved. | `RecruitmentWorkflowService.record_approval` returns approval even when `_runs.get(run_id)` is missing. | Return `404` for unknown runs unless demo requirements explicitly allow blind approval echo. | Open |
 | QA-004 | Low | Local dev integration | Default frontend port `4200` was occupied during QA. The fallback port `4300` is not CORS-whitelisted by the backend, so a browser served from `4300` would not be able to call the live API and would fall back to demo mode. | Frontend dev server had to start on `127.0.0.1:4300`; backend CORS allows `4200` and `5173`, not `4300`. | Keep `4200` free for demos or add documented alternate dev ports to CORS. | Open |
 | QA-005 | Medium | Frontend workflow stepper | After selecting `Approved` and clicking `Save approval`, the approval status was saved, but the final workflow step was never activated. The SAD defines approval/report-ready summary as the final human-review state, and the UI stepper includes `Approval` as step 6. | Fixed in `frontend/src/app/app.ts`; `activeStep` now returns `5` for pending approval and `6` after a non-pending approval is recorded. Covered by frontend tests in `frontend/src/app/app.spec.ts`. | Keep the current 6-step UI for MVP. Revisit whether to expand to the SAD's 7-step flow during broader UX refinement. | Fixed |
+| QA-006 | Medium | Frontend progress state | The Run progress bar can remain at 86% with label `Recommending` after the ranked shortlist is already rendered, making the completed recommendation run look unfinished. | Browser observation on 2026-05-18 showed shortlist results with progress below 100%. Static review found `runWorkflow()` schedules `window.setTimeout(() => this.runStatus.set('recommending'), 450)` and later sets `runStatus` to `complete` in the API success handler. If the run returns before the delayed callback fires, the callback can overwrite `complete` back to `recommending`. Existing frontend tests do not cover `progressValue()` or this timer race. | Cancel or guard the delayed `recommending` transition so it cannot run after completion/failure; add a regression test that verifies `progressValue()` remains `100` after the workflow completes and delayed timers flush. | Open |
 
 ## Status Tracking
 
@@ -99,7 +102,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | Execute Application Crew agent tests | Complete | Researcher, Evaluator, Recommender, and CrewAI blueprint checks passed. |
 | Execute frontend checks | Complete | Unit tests, build, and dev-server HTML smoke passed. |
 | Execute end-to-end tests | Complete | Live backend HTTP flow passed; browser-click automation not run. |
-| Document findings | Complete | Four open findings remain; QA-005 fixed and verified. |
+| Document findings | Complete | Five open findings remain; QA-005 fixed and verified; QA-006 added from 2026-05-18 progress-bar review. |
 
 ## Assumptions
 
@@ -117,7 +120,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 
 ## Verification
 
-Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
+Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. QA-006 was raised on 2026-05-18 after browser observation and static review; `npm test -- --watch=false` and `npm run build` still pass, confirming the current automated checks do not catch the progress-bar defect. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
 
 ## Handoff Notes
 
