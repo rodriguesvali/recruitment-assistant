@@ -36,7 +36,3 @@ fi
 if [ -f backend/pyproject.toml ] || [ -f backend/setup.py ]; then
   python -m pip install -e backend
 fi
-
-if [ -f backend/alembic.ini ] || [ -f alembic.ini ]; then
-  alembic upgrade head
-fi

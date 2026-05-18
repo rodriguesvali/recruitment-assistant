@@ -9,26 +9,3 @@ services:
       - ..:/workspace/recruitment-assistant:cached
     working_dir: /workspace/recruitment-assistant
     command: sleep infinity
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-bookworm
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: recruitment_assistant
-      POSTGRES_USER: recruitment
-      POSTGRES_PASSWORD: recruitment
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U recruitment -d recruitment_assistant"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-volumes:
-  postgres-data:

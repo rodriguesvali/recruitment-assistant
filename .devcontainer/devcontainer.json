@@ -4,8 +4,7 @@
   "service": "app",
   "workspaceFolder": "/workspace/recruitment-assistant",
   "runServices": [
-    "app",
-    "postgres"
+    "app"
   ],
   "shutdownAction": "stopCompose",
   "remoteUser": "vscode",
@@ -16,8 +15,7 @@
   },
   "forwardPorts": [
     4200,
-    8000,
-    5432
+    8000
   ],
   "portsAttributes": {
     "4200": {
@@ -25,15 +23,11 @@
     },
     "8000": {
       "label": "FastAPI"
-    },
-    "5432": {
-      "label": "PostgreSQL"
     }
   },
   "containerEnv": {
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONUNBUFFERED": "1",
-    "DATABASE_URL": "postgresql+psycopg://recruitment:recruitment@postgres:5432/recruitment_assistant",
     "AAMAD_ADAPTER": "crewai"
   },
   "customizations": {
