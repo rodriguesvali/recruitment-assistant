@@ -37,6 +37,13 @@ describe('App', () => {
     expect(compiled.querySelector('h1')?.textContent).toContain('AI-assisted shortlist review');
   });
 
+  it('only exposes backend-supported seeded dataset options', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    expect(app.datasetOptions.map((option) => option.value)).toEqual(['backend_engineers']);
+  });
+
   it('keeps the workflow on Run while approval is pending', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;

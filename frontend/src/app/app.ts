@@ -76,9 +76,7 @@ export class App implements OnInit {
   ];
 
   readonly datasetOptions = [
-    { label: 'Backend engineers', value: 'backend_engineers' },
-    { label: 'Frontend engineers', value: 'frontend_engineers' },
-    { label: 'Data and analytics', value: 'data_analytics' }
+    { label: 'Backend engineers', value: 'backend_engineers' }
   ];
 
   readonly seniorityOptions = [

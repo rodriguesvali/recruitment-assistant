@@ -73,6 +73,8 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | `npm run build` from `frontend/` after QA-006 fix | Passed. |
 | `npm test -- --watch=false` from `frontend/` after QA-001 fix | Passed: 2 test files, 10 tests. |
 | `npm run build` from `frontend/` after QA-001 fix | Passed. |
+| `npm test -- --watch=false` from `frontend/` after QA-002 fix | Passed: 2 test files, 11 tests. |
+| `npm run build` from `frontend/` after QA-002 fix | Passed. |
 | Scripted FastAPI and direct agent QA checks | Passed: 16 checks. |
 | `PYTHONPATH=backend uvicorn app.main:app --host 127.0.0.1 --port 8000` | Started successfully for live smoke. |
 | `curl http://127.0.0.1:8000/health` | Passed. |
@@ -86,7 +88,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | ID | Severity | Area | Finding | Evidence | Recommendation | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | QA-001 | Medium | Frontend/API integration | Frontend API service catches all API errors and falls back to demo results, including backend validation or server failures. This preserves demo usability but can mask real API defects during QA or production-like demos. | Fixed on 2026-05-18. `RecruitmentApiService` now uses demo fallback only for request timeout or status `0` transport failures, while backend HTTP `4xx/5xx` responses are rethrown to Angular subscribers. Covered by focused service tests for network fallback, timeout fallback, validation error propagation, server error propagation, and preserved fallback warning copy. | Keep fallback limited to offline/timeout failures unless an explicit demo-mode flag is added later. | Fixed |
-| QA-002 | Low | Frontend/API integration | Frontend includes seeded dataset options `frontend_engineers` and `data_analytics`, but backend only ships `backend_engineers`. Selecting the extra options produces an empty preview warning. | `frontend/src/app/app.ts` dataset options vs `SEED_CANDIDATES` in backend. | Either add seeded datasets or limit the dropdown to backend-supported IDs. | Open |
+| QA-002 | Low | Frontend/API integration | Frontend included seeded dataset options `frontend_engineers` and `data_analytics`, but backend only ships `backend_engineers`. Selecting the extra options produced an empty preview warning. | Fixed on 2026-05-18. `frontend/src/app/app.ts` now exposes only the backend-supported `backend_engineers` seeded dataset. Covered by a focused frontend regression test in `frontend/src/app/app.spec.ts`. | Keep the seeded dataset selector aligned with backend-supported IDs until additional approved fixtures are added. | Fixed |
 | QA-003 | Low | API semantics | Approval endpoint returns success for unknown `run_id` instead of returning `404`. This can make a mistyped or stale run approval look saved. | `RecruitmentWorkflowService.record_approval` returns approval even when `_runs.get(run_id)` is missing. | Return `404` for unknown runs unless demo requirements explicitly allow blind approval echo. | Open |
 | QA-004 | Low | Local dev integration | Default frontend port `4200` was occupied during QA. The fallback port `4300` is not CORS-whitelisted by the backend, so a browser served from `4300` would not be able to call the live API and would fall back to demo mode. | Frontend dev server had to start on `127.0.0.1:4300`; backend CORS allows `4200` and `5173`, not `4300`. | Keep `4200` free for demos or add documented alternate dev ports to CORS. | Open |
 | QA-005 | Medium | Frontend workflow stepper | After selecting `Approved` and clicking `Save approval`, the approval status was saved, but the final workflow step was never activated. The SAD defines approval/report-ready summary as the final human-review state, and the UI stepper includes `Approval` as step 6. | Fixed in `frontend/src/app/app.ts`; `activeStep` now returns `5` for pending approval and `6` after a non-pending approval is recorded. Covered by frontend tests in `frontend/src/app/app.spec.ts`. | Keep the current 6-step UI for MVP. Revisit whether to expand to the SAD's 7-step flow during broader UX refinement. | Fixed |
@@ -106,7 +108,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | Execute Application Crew agent tests | Complete | Researcher, Evaluator, Recommender, and CrewAI blueprint checks passed. |
 | Execute frontend checks | Complete | Unit tests, build, and dev-server HTML smoke passed. |
 | Execute end-to-end tests | Complete | Live backend HTTP flow passed; browser-click automation not run. |
-| Document findings | Complete | Three open findings remain; QA-001, QA-005, and QA-006 fixed and verified. |
+| Document findings | Complete | Two open findings remain; QA-001, QA-002, QA-005, and QA-006 fixed and verified. |
 
 ## Assumptions
 
@@ -118,12 +120,12 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 ## Open Questions
 
 - Should approval of an unknown `run_id` be considered invalid for the MVP?
-- Will additional seeded datasets be added before delivery, or should unsupported dataset options be removed?
+- Will additional seeded datasets be added before delivery, after approved fixtures are defined?
 - Is browser e2e automation expected for delivery, and if so should Playwright or another runner be added to the repo?
 
 ## Verification
 
-Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-001 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now covers offline/timeout fallback and HTTP validation/server error propagation in `RecruitmentApiService`. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. QA-006 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage for the delayed progress-state race. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
+Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-001 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now covers offline/timeout fallback and HTTP validation/server error propagation in `RecruitmentApiService`. QA-002 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage that only backend-supported seeded dataset IDs are exposed. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. QA-006 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage for the delayed progress-state race. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
 
 ## Handoff Notes
 
