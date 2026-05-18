@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from fastapi import HTTPException, status
+
 from app.agents.crew import EvaluatorAgent, RecommenderAgent, ResearcherAgent
 from app.schemas.recruitment import (
     CandidatePreviewResponse,
@@ -76,9 +78,11 @@ class RecruitmentWorkflowService:
 
     def record_approval(self, run_id: str, approval: RecruiterApproval) -> RecruiterApproval:
         existing = self._runs.get(run_id)
-        if existing:
-            existing.approval = approval
-            self._runs[run_id] = existing
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation run not found.")
+
+        existing.approval = approval
+        self._runs[run_id] = existing
         return approval
 
     def _empty_result(self, criteria: EvaluationCriteria, warnings: list[WorkflowWarning]) -> RecruitmentRunResult:
