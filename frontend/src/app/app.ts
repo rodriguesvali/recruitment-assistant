@@ -140,8 +140,10 @@ export class App implements OnInit {
   });
 
   readonly activeStep = computed(() => {
-    if (this.runResult()) {
-      return 5;
+    const result = this.runResult();
+
+    if (result) {
+      return result.approval.status === 'pending' ? 5 : 6;
     }
 
     if (this.candidates().length) {
