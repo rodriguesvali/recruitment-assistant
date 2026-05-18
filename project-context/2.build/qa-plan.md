@@ -32,6 +32,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | AC-08 | Empty or invalid input fails safely with useful validation or warning. | Passed with issue |
 | AC-09 | Frontend builds and renders the primary app shell. | Passed |
 | AC-10 | Full browser e2e interaction is automated. | Not run |
+| AC-11 | Workflow stepper clearly reflects approval as the final human-review state. | Failed |
 
 ## Test Scenarios
 
@@ -54,6 +55,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | TC-FE-001 | Angular unit tests. | App component tests pass. | `2 passed`. | Passed |
 | TC-FE-002 | Angular production build. | Build completes without errors. | Build completed to `frontend/dist/frontend`. | Passed |
 | TC-FE-003 | Frontend dev server smoke. | Serves Angular shell. | Served `index.html` with `<app-root>` on `127.0.0.1:4300`. | Passed with issue |
+| TC-FE-004 | Save approval after selecting `Approved`. | Approval status updates and the workflow stepper activates the final `Approval` step. | `recordApproval()` updates `runResult.approval`, but `activeStep` returns `5` whenever `runResult()` exists and never returns `6`; final `Approval` step is not activated. | Failed |
 | TC-E2E-001 | Live backend HTTP workflow. | Local server handles run and approval over HTTP. | Uvicorn handled health, run, and approval calls successfully. | Passed |
 
 ## Execution Log
@@ -79,6 +81,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | QA-002 | Low | Frontend/API integration | Frontend includes seeded dataset options `frontend_engineers` and `data_analytics`, but backend only ships `backend_engineers`. Selecting the extra options produces an empty preview warning. | `frontend/src/app/app.ts` dataset options vs `SEED_CANDIDATES` in backend. | Either add seeded datasets or limit the dropdown to backend-supported IDs. | Open |
 | QA-003 | Low | API semantics | Approval endpoint returns success for unknown `run_id` instead of returning `404`. This can make a mistyped or stale run approval look saved. | `RecruitmentWorkflowService.record_approval` returns approval even when `_runs.get(run_id)` is missing. | Return `404` for unknown runs unless demo requirements explicitly allow blind approval echo. | Open |
 | QA-004 | Low | Local dev integration | Default frontend port `4200` was occupied during QA. The fallback port `4300` is not CORS-whitelisted by the backend, so a browser served from `4300` would not be able to call the live API and would fall back to demo mode. | Frontend dev server had to start on `127.0.0.1:4300`; backend CORS allows `4200` and `5173`, not `4300`. | Keep `4200` free for demos or add documented alternate dev ports to CORS. | Open |
+| QA-005 | Medium | Frontend workflow stepper | After selecting `Approved` and clicking `Save approval`, the approval status is saved, but the final workflow step is never activated. The SAD defines approval/report-ready summary as the final human-review state, and the UI stepper includes `Approval` as step 6, but `activeStep` stops at `5` when `runResult()` exists. | `project-context/2.build/sad.md` defines final approval/report-ready summary; `frontend/src/app/app.html` renders `['Job', 'Criteria', 'Source', 'Preview', 'Run', 'Approval']`; `frontend/src/app/app.ts` returns `5` for any `runResult()` and `recordApproval()` only updates `runResult.approval`. | Update `activeStep` so it returns `6` after a non-pending approval is saved, or align the stepper labels/count with the documented 7-step SAD flow. Add a frontend test for approval step activation. | Open |
 
 ## Status Tracking
 
@@ -94,7 +97,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | Execute Application Crew agent tests | Complete | Researcher, Evaluator, Recommender, and CrewAI blueprint checks passed. |
 | Execute frontend checks | Complete | Unit tests, build, and dev-server HTML smoke passed. |
 | Execute end-to-end tests | Complete | Live backend HTTP flow passed; browser-click automation not run. |
-| Document findings | Complete | Four open findings recorded. |
+| Document findings | Complete | Five open findings recorded. |
 
 ## Assumptions
 
@@ -107,6 +110,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 
 - Should demo fallback be disabled when the backend is online but returns a validation or server error?
 - Should approval of an unknown `run_id` be considered invalid for the MVP?
+- Should the UI stepper use the SAD's 7-step flow, or should the current 6-step flow activate `Approval` only after `approval.status !== 'pending'`?
 - Will additional seeded datasets be added before delivery, or should unsupported dataset options be removed?
 - Is browser e2e automation expected for delivery, and if so should Playwright or another runner be added to the repo?
 
