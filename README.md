@@ -62,19 +62,32 @@ Expected value:
 
 ## Application Architecture Overview
 
-The application uses a sequential multi-agent workflow. Each agent owns one part of the recruiting assistant process and passes structured output to the next step.
+The Build-phase MVP is a local full-stack application with an Angular + PrimeNG frontend and a FastAPI backend. The backend exposes typed JSON APIs, runs deterministic recruitment workflow services for reliable demos and tests, and keeps CrewAI agent/task descriptors ready for future live LLM execution.
+
+The core product flow remains a sequential application crew. Each agent owns one part of the recruiting assistant process and passes structured output to the next step.
 
 ```mermaid
 flowchart LR
-  A[Recruiter job requirements] --> B[Criteria review]
-  B --> C[Approved candidate data]
-  C --> D[Researcher Agent]
-  D --> E[Evaluator Agent]
-  E --> F[Recommender Agent]
-  F --> G[Ranked shortlist]
-  G --> H[Recruiter review and approval]
-  H --> I[Hiring-manager-ready summary]
+  A[Recruiter in Angular UI] --> B[FastAPI JSON API]
+  B --> C[Criteria Service]
+  B --> D[Candidate Source Service]
+  C --> E[Recruitment Workflow Service]
+  D --> E
+  E --> F[Researcher Agent]
+  F --> G[Evaluator Agent]
+  G --> H[Recommender Agent]
+  H --> I[Ranked shortlist and report]
+  I --> J[Recruiter approval]
 ```
+
+Runtime layers:
+
+- `frontend/`: Angular 21 single-page recruiter workflow using PrimeNG components.
+- `backend/app/main.py`: FastAPI app with CORS configured for local frontend ports `4200`, `4300`, and `5173`.
+- `backend/app/api/routes.py`: API boundary for health, criteria extraction, candidate preview, recommendation runs, and approval capture.
+- `backend/app/schemas/`: Pydantic contracts shared conceptually with the frontend TypeScript models.
+- `backend/app/services/`: deterministic criteria, candidate source, workflow, and report services.
+- `backend/app/agents/`: Researcher, Evaluator, and Recommender agent classes plus CrewAI YAML descriptors.
 
 ### Researcher Agent
 
@@ -133,32 +146,46 @@ Outputs:
 
 ## Getting Started
 
-The MVP now includes a FastAPI backend and an Angular + PrimeNG frontend.
+The MVP includes a FastAPI backend and an Angular + PrimeNG frontend. Build phase is complete, with backend smoke tests, frontend tests/builds, integration checks, and QA findings `QA-001` through `QA-006` fixed.
 
 ### Prerequisites
 
-For the current Define-phase repository state, contributors need:
+For local development, contributors need:
 
 - Git.
-- Python 3.11 or newer for the expected backend environment.
-- Node.js 20 or newer for the expected frontend environment once the UI is added.
-- Access to approved or seeded candidate data for any real workflow testing.
+- Python 3.11 or newer.
+- Node.js 20 or newer.
+- npm, matching the frontend lockfile workflow.
+- Access to approved or seeded candidate data for real workflow testing.
 - Legal/HR approval before using real candidate data or real hiring workflows.
 
-### Installation
+### Environment Setup
 
 Install backend and frontend dependencies:
 
 ```bash
 git clone <repo-url>
 cd recruitment-assistant
+
 python -m venv backend/.venv
 source backend/.venv/bin/activate
 pip install -r backend/requirements.txt
+
 cd frontend
 npm install
 cd ..
 ```
+
+The root scripts automatically use `backend/.venv` when it exists. Runtime ports are controlled with environment variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BACKEND_HOST` | `0.0.0.0` | FastAPI bind host |
+| `BACKEND_PORT` | `8000` | FastAPI port |
+| `FRONTEND_HOST` | `0.0.0.0` | Angular dev-server bind host |
+| `FRONTEND_PORT` | `4200` | Angular dev-server port |
+
+The frontend expects the local backend at `http://localhost:8000`. If the backend is unavailable, the UI preserves demo usability with labeled fallback data.
 
 ### Run Locally
 
@@ -186,6 +213,8 @@ Ports can be changed with environment variables:
 BACKEND_PORT=8001 FRONTEND_PORT=4300 ./scripts/start-dev.sh
 ```
 
+The backend CORS allowlist includes the documented local frontend ports `4200`, `4300`, and `5173` for both `localhost` and `127.0.0.1`.
+
 VS Code launchers are also available:
 
 - Run Task: `Backend: FastAPI`
@@ -195,9 +224,7 @@ VS Code launchers are also available:
 
 ### Basic Usage
 
-Basic usage will be completed during the Build phase after the backend crew workflow and frontend or caller interface exist.
-
-Planned MVP flow:
+The MVP flow is available through the web UI:
 
 1. Enter or upload job requirements.
 2. Review extracted evaluation criteria.
@@ -208,33 +235,28 @@ Planned MVP flow:
 
 ### Review The Product Context
 
-Start with the approved Define-phase artifacts:
+Start with the approved Define and Build artifacts:
 
 - `project-context/1.define/prd.md` - product requirements and MVP scope.
 - `project-context/1.define/mrd.md` - market requirements and product positioning.
 - `project-context/1.define/open-questions.md` - unresolved stakeholder, compliance, and implementation questions.
-- `project-context/1.define/sad.md` - architecture document placeholder to be completed before or during Build.
+- `project-context/2.build/sad.md` - Build-phase solution architecture.
+- `project-context/2.build/setup.md` - environment and launch decisions.
+- `project-context/2.build/backend.md` - backend implementation notes.
+- `project-context/2.build/frontend.md` - frontend implementation notes.
+- `project-context/2.build/qa-plan.md` - QA scenarios, defect log, fixes, verification, and known gaps.
 
-### Confirm MVP Decisions
+### Verification Commands
 
-Before implementation, confirm:
+Run the backend and frontend checks from the repository root:
 
-- Candidate data source for the MVP: seeded data, pasted profiles, uploaded text, or approved API.
-- Scoring style: numeric score, qualitative label, or both.
-- Required candidate fields for first implementation.
-- Whether frontend editing is in scope or the MVP only supports review and approval checkpoints.
-- AI-assisted disclosure language for UI and reports.
+```bash
+PYTHONPATH=backend pytest -q backend/tests
 
-### Build The MVP
-
-Recommended implementation order:
-
-1. Complete or update `project-context/1.define/sad.md` with architecture decisions.
-2. Add seeded candidate data and canonical QA fixtures.
-3. Implement backend services for Researcher, Evaluator, and Recommender workflow.
-4. Implement guided frontend or chat-like recruiter flow.
-5. Integrate frontend or caller workflow with backend APIs.
-6. Add QA coverage for happy path, ambiguous inputs, missing data, unapproved sources, low-confidence results, timeout handling, malformed outputs, and brand-voice checks.
+cd frontend
+npm test -- --watch=false
+npm run build
+```
 
 ## Project Structure
 
@@ -243,20 +265,30 @@ Recommended implementation order:
 ├── AGENTS.md                         # AAMAD/Codex operating instructions
 ├── CHECKLIST.md                      # Project checklist from framework setup
 ├── README.md                         # Repository overview and onboarding guide
-├── backend/                          # Backend implementation target
-├── frontend/                         # Frontend implementation target
+├── backend/                          # FastAPI backend, schemas, services, agents, and tests
+│   ├── app/
+│   │   ├── agents/                   # Researcher, Evaluator, Recommender definitions
+│   │   ├── api/                      # FastAPI route layer
+│   │   ├── schemas/                  # Pydantic API/workflow contracts
+│   │   └── services/                 # Deterministic MVP workflow services
+│   └── tests/                        # Backend smoke and regression tests
+├── frontend/                         # Angular + PrimeNG recruiter workflow
+│   └── src/app/                      # UI, service client, models, and tests
+├── scripts/                          # Local backend/frontend/full-stack launch scripts
 ├── project-context/
 │   ├── 1.define/
 │   │   ├── context-summary.md         # Define-phase summary
 │   │   ├── mrd.md                     # Market Requirements Document
 │   │   ├── open-questions.md          # Open product/business/technical questions
 │   │   ├── prd.md                     # Product Requirements Document
-│   │   └── sad.md                     # Solution Architecture Document placeholder
+│   │   └── sad.md                     # Define-phase architecture notes
 │   ├── 2.build/
+│   │   ├── architecture-plan.md       # Build sequencing and architecture plan
 │   │   ├── backend.md                 # Backend build notes
 │   │   ├── frontend.md                # Frontend build notes
 │   │   ├── integration.md             # Integration build notes
-│   │   ├── qa.md                      # QA plan/results notes
+│   │   ├── qa-plan.md                 # QA scenarios, findings, and verification
+│   │   ├── sad.md                     # Build-phase solution architecture
 │   │   └── setup.md                   # Environment/setup notes
 │   ├── 3.deliver/
 │   │   ├── deployment.md              # Deployment notes
@@ -272,71 +304,79 @@ Recommended implementation order:
 
 ## Development Status
 
-Current phase: Define.
+Current phase: Build complete, ready for Deliver-phase packaging and deployment decisions.
 
 Completed:
 
-- Product framing, problem statement, value proposition, and MVP scope are documented.
-- MRD and PRD artifacts exist under `project-context/1.define/`.
-- Application crew roles are defined as Researcher, Evaluator, and Recommender.
-- Development crew mapping is documented for Product Manager, System Architect, Project Manager, Backend Engineer, Frontend Engineer, Integration Engineer, and QA Engineer.
-- AAMAD/Codex operating instructions and project-context structure are present.
-- Open questions are captured for stakeholder, compliance, data-source, and implementation decisions.
+- Product framing, MRD, PRD, and architecture artifacts are documented.
+- FastAPI backend is implemented with typed Pydantic contracts and local CORS configuration.
+- Deterministic Researcher, Evaluator, and Recommender workflow services are implemented for reliable local demos.
+- CrewAI agent and task descriptors are present for future live LLM execution.
+- Angular + PrimeNG frontend is implemented as a guided recruiter workflow.
+- Frontend and backend are wired through JSON APIs for criteria extraction, candidate preview, recommendation runs, and approval capture.
+- Root launch scripts and VS Code tasks/debug launchers are available.
+- QA findings `QA-001` through `QA-006` are fixed and verified.
+
+Known gaps:
+
+- Approval/run storage is in memory and resets when the backend process restarts.
+- Live CrewAI kickoff is not enabled by API routes; the MVP uses deterministic backend services.
+- Uploaded candidate data is accepted as plain text in JSON, not multipart file upload.
+- Browser-click e2e automation is not installed in the workspace.
+- Real candidate data use still requires legal/HR approval.
 
 Next:
 
-- Complete `project-context/1.define/sad.md` with concrete architecture decisions.
-- Confirm approved candidate data source, scoring style, required fields, and disclosure language.
-- Add Build-phase setup files and dependency manifests.
-- Implement backend crew workflow and frontend or caller interface.
-- Add fixtures, tests, integration smoke checks, and QA results.
-- Prepare Deliver-phase deployment, operations, and release notes when the MVP is runnable.
+- Prepare Deliver-phase deployment, operations, access, monitoring, and rollback notes.
+- Decide whether to add Playwright or another browser e2e runner before release.
+- Externalize frontend API URL configuration before deployed demos.
+- Replace in-memory run storage with persistent audit/history storage if the MVP moves beyond local demo use.
 
 ## Contributor Workstreams
 
 ### Product Manager
 
-- Validate real user personas with recruiters, hiring managers, or HR/talent operations stakeholders.
-- Confirm the primary organizational goal: internal productivity, CrewAI showcase, commercial MVP validation, or responsible AI governance pilot.
-- Validate manual baseline time, recruiter cost assumptions, operating cost assumptions, and minimum ROI threshold.
+- Validate Build-complete MVP behavior with recruiters, hiring managers, or HR/talent operations stakeholders.
+- Confirm the primary delivery goal: internal productivity, CrewAI showcase, commercial MVP validation, or responsible AI governance pilot.
+- Validate manual baseline time, recruiter cost assumptions, operating cost assumptions, and minimum ROI threshold against the working MVP.
 - Keep `project-context/1.define/open-questions.md` current as decisions are made.
 
 ### System Architect
 
-- Complete `project-context/1.define/sad.md`.
-- Define backend/API boundaries, data contracts, storage decisions, timeout handling, and model-output schemas.
-- Confirm how intermediate agent outputs are persisted or returned for recruiter review.
+- Maintain `project-context/2.build/sad.md` as architecture decisions evolve.
+- Review backend/API boundaries, data contracts, storage decisions, timeout handling, and model-output schemas before delivery changes.
+- Decide when to replace deterministic MVP services with live CrewAI execution or persistent storage.
 
 ### Project Manager
 
-- Scaffold Build-phase project structure and setup tasks.
-- Confirm prerequisites, dependency manifests, and environment-variable expectations.
-- Sequence frontend, backend, integration, and QA workstreams from the approved PRD scope.
+- Coordinate Deliver-phase tasks, release readiness, and handoff notes.
+- Keep prerequisites, dependency manifests, and environment-variable expectations current.
+- Sequence any remaining frontend, backend, integration, QA, and DevOps follow-ups from the approved PRD scope.
 - Document setup decisions in `project-context/2.build/setup.md`.
 
 ### Backend Engineer
 
-- Implement the Researcher, Evaluator, and Recommender workflow.
+- Maintain the Researcher, Evaluator, and Recommender workflow.
 - Use approved or seeded candidate data only.
 - Return structured output with candidate summaries, strengths, gaps, unknowns, confidence, rationale, and next steps.
-- Add tests for core workflow behavior and safe failure states.
+- Keep tests current for core workflow behavior and safe failure states.
 
 ### Frontend Engineer
 
-- Build the guided recruiter workflow for job input, candidate source selection, criteria review, evaluation review, and recommendation approval.
+- Maintain the guided recruiter workflow for job input, candidate source selection, criteria review, evaluation review, and recommendation approval.
 - Present ranked shortlist, candidate detail, confidence, caveats, and report-ready summary.
 - Keep UI copy aligned with professional, neutral, evidence-based brand voice.
 
 ### Integration Engineer
 
-- Connect frontend or caller workflow to backend APIs.
-- Validate the path from job requirements to recruiter-approved ranked recommendations.
+- Maintain frontend/backend API compatibility.
+- Validate the path from job requirements to recruiter-approved ranked recommendations after changes.
 - Document smoke test results in `project-context/2.build/integration.md`.
 
 ### QA Engineer
 
-- Create canonical seeded role and candidate fixtures.
-- Validate required input handling, ambiguity handling, approved-source boundaries, missing evidence, model timeout, malformed output, and low-confidence output.
+- Maintain canonical seeded role and candidate fixtures.
+- Revalidate required input handling, ambiguity handling, approved-source boundaries, missing evidence, model timeout, malformed output, and low-confidence output after changes.
 - Verify that recommendations use neutral, job-related, evidence-based language and include AI-assisted disclosure.
 
 ## Success Metrics
@@ -373,4 +413,9 @@ Recommended disclosure for MVP outputs:
 - Product Requirements Document: `project-context/1.define/prd.md`
 - Market Requirements Document: `project-context/1.define/mrd.md`
 - Open Questions: `project-context/1.define/open-questions.md`
+- Build Solution Architecture Document: `project-context/2.build/sad.md`
+- Build setup notes: `project-context/2.build/setup.md`
+- Backend build notes: `project-context/2.build/backend.md`
+- Frontend build notes: `project-context/2.build/frontend.md`
+- QA plan and verification: `project-context/2.build/qa-plan.md`
 - CrewAI recruitment example reference: https://github.com/crewAIInc/crewAI-examples/tree/main/crews/recruitment
