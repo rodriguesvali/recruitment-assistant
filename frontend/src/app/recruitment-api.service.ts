@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, delay, map, of, timeout } from 'rxjs';
+import { Observable, TimeoutError, catchError, delay, map, of, throwError, timeout } from 'rxjs';
 import {
   CandidateEvaluation,
   CandidateProfile,
@@ -33,7 +33,7 @@ export class RecruitmentApiService {
   extractCriteria(job: JobRequirement): Observable<EvaluationCriteria> {
     return this.http.post<EvaluationCriteria>(`${API_BASE_URL}/api/criteria/extract`, { job }).pipe(
       timeout(10000),
-      catchError(() => of(this.createFallbackCriteria(job)).pipe(delay(350)))
+      catchError((error) => this.fallbackForOfflineOnly(error, of(this.createFallbackCriteria(job)).pipe(delay(350))))
     );
   }
 
@@ -49,16 +49,19 @@ export class RecruitmentApiService {
           candidates: response.candidates ?? [],
           warnings: response.warnings ?? []
         })),
-        catchError(() =>
-          of({
-            candidates: this.createFallbackCandidates(source),
-            warnings: [
-              {
-                code: 'DEMO_FALLBACK',
-                message: 'Backend API was unavailable, so deterministic local candidate preview is shown.'
-              }
-            ]
-          }).pipe(delay(450))
+        catchError((error) =>
+          this.fallbackForOfflineOnly(
+            error,
+            of({
+              candidates: this.createFallbackCandidates(source),
+              warnings: [
+                {
+                  code: 'DEMO_FALLBACK',
+                  message: 'Backend API was unavailable, so deterministic local candidate preview is shown.'
+                }
+              ]
+            }).pipe(delay(450))
+          )
         )
       );
   }
@@ -66,15 +69,25 @@ export class RecruitmentApiService {
   runRecommendations(request: WorkflowRequest, candidates: CandidateProfile[]): Observable<RecruitmentRunResult> {
     return this.http.post<RecruitmentRunResult>(`${API_BASE_URL}/api/recommendations/run`, request).pipe(
       timeout(130000),
-      catchError(() => of(this.createFallbackRun(request, candidates)).pipe(delay(900)))
+      catchError((error) =>
+        this.fallbackForOfflineOnly(error, of(this.createFallbackRun(request, candidates)).pipe(delay(900)))
+      )
     );
   }
 
   recordApproval(runId: string, approval: RecruiterApproval): Observable<RecruiterApproval> {
     return this.http.post<RecruiterApproval>(`${API_BASE_URL}/api/recommendations/${runId}/approval`, approval).pipe(
       timeout(10000),
-      catchError(() => of(approval).pipe(delay(250)))
+      catchError((error) => this.fallbackForOfflineOnly(error, of(approval).pipe(delay(250))))
     );
+  }
+
+  private fallbackForOfflineOnly<T>(error: unknown, fallback: Observable<T>): Observable<T> {
+    if (error instanceof TimeoutError || (error instanceof HttpErrorResponse && error.status === 0)) {
+      return fallback;
+    }
+
+    return throwError(() => error);
   }
 
   private createFallbackCriteria(job: JobRequirement): EvaluationCriteria {

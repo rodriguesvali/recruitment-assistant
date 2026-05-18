@@ -71,6 +71,8 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | `npm run build` from `frontend/` after QA-005 fix | Passed. |
 | `npm test -- --watch=false` from `frontend/` after QA-006 fix | Passed: 1 test file, 5 tests. |
 | `npm run build` from `frontend/` after QA-006 fix | Passed. |
+| `npm test -- --watch=false` from `frontend/` after QA-001 fix | Passed: 2 test files, 10 tests. |
+| `npm run build` from `frontend/` after QA-001 fix | Passed. |
 | Scripted FastAPI and direct agent QA checks | Passed: 16 checks. |
 | `PYTHONPATH=backend uvicorn app.main:app --host 127.0.0.1 --port 8000` | Started successfully for live smoke. |
 | `curl http://127.0.0.1:8000/health` | Passed. |
@@ -83,7 +85,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 
 | ID | Severity | Area | Finding | Evidence | Recommendation | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| QA-001 | Medium | Frontend/API integration | Frontend API service catches all API errors and falls back to demo results, including backend validation or server failures. This preserves demo usability but can mask real API defects during QA or production-like demos. | `RecruitmentApiService.extractCriteria`, `previewCandidates`, `runRecommendations`, and `recordApproval` all use broad `catchError`. | Gate fallback behind an explicit demo mode flag or surface backend errors when `backendOnline=true`. | Open |
+| QA-001 | Medium | Frontend/API integration | Frontend API service catches all API errors and falls back to demo results, including backend validation or server failures. This preserves demo usability but can mask real API defects during QA or production-like demos. | Fixed on 2026-05-18. `RecruitmentApiService` now uses demo fallback only for request timeout or status `0` transport failures, while backend HTTP `4xx/5xx` responses are rethrown to Angular subscribers. Covered by focused service tests for network fallback, timeout fallback, validation error propagation, server error propagation, and preserved fallback warning copy. | Keep fallback limited to offline/timeout failures unless an explicit demo-mode flag is added later. | Fixed |
 | QA-002 | Low | Frontend/API integration | Frontend includes seeded dataset options `frontend_engineers` and `data_analytics`, but backend only ships `backend_engineers`. Selecting the extra options produces an empty preview warning. | `frontend/src/app/app.ts` dataset options vs `SEED_CANDIDATES` in backend. | Either add seeded datasets or limit the dropdown to backend-supported IDs. | Open |
 | QA-003 | Low | API semantics | Approval endpoint returns success for unknown `run_id` instead of returning `404`. This can make a mistyped or stale run approval look saved. | `RecruitmentWorkflowService.record_approval` returns approval even when `_runs.get(run_id)` is missing. | Return `404` for unknown runs unless demo requirements explicitly allow blind approval echo. | Open |
 | QA-004 | Low | Local dev integration | Default frontend port `4200` was occupied during QA. The fallback port `4300` is not CORS-whitelisted by the backend, so a browser served from `4300` would not be able to call the live API and would fall back to demo mode. | Frontend dev server had to start on `127.0.0.1:4300`; backend CORS allows `4200` and `5173`, not `4300`. | Keep `4200` free for demos or add documented alternate dev ports to CORS. | Open |
@@ -104,7 +106,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | Execute Application Crew agent tests | Complete | Researcher, Evaluator, Recommender, and CrewAI blueprint checks passed. |
 | Execute frontend checks | Complete | Unit tests, build, and dev-server HTML smoke passed. |
 | Execute end-to-end tests | Complete | Live backend HTTP flow passed; browser-click automation not run. |
-| Document findings | Complete | Four open findings remain; QA-005 and QA-006 fixed and verified. |
+| Document findings | Complete | Three open findings remain; QA-001, QA-005, and QA-006 fixed and verified. |
 
 ## Assumptions
 
@@ -115,18 +117,17 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 
 ## Open Questions
 
-- Should demo fallback be disabled when the backend is online but returns a validation or server error?
 - Should approval of an unknown `run_id` be considered invalid for the MVP?
 - Will additional seeded datasets be added before delivery, or should unsupported dataset options be removed?
 - Is browser e2e automation expected for delivery, and if so should Playwright or another runner be added to the repo?
 
 ## Verification
 
-Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. QA-006 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage for the delayed progress-state race. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
+Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-001 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now covers offline/timeout fallback and HTTP validation/server error propagation in `RecruitmentApiService`. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. QA-006 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage for the delayed progress-state race. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
 
 ## Handoff Notes
 
 - MVP is functionally ready for a guided local demo on the default backend `8000` and frontend `4200` ports.
-- Before a production-like demo, resolve or explicitly accept the fallback masking behavior in `QA-001`.
+- Before a production-like demo, keep fallback behavior limited to backend-offline or timeout failures so API validation/server defects remain visible.
 - Keep the app on CORS-approved frontend ports or update backend CORS for any alternate demo port.
 - Add browser e2e coverage for seeded happy path, pasted profiles, uploaded text, empty source, backend-unavailable fallback, and approval capture when the team adds a browser test runner.
