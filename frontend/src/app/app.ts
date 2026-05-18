@@ -56,6 +56,7 @@ import { RecruitmentApiService } from './recruitment-api.service';
 export class App implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(RecruitmentApiService);
+  private recommendationRunId = 0;
 
   readonly backendOnline = signal<boolean | null>(null);
   readonly criteria = signal<EvaluationCriteria | null>(null);
@@ -271,9 +272,15 @@ export class App implements OnInit {
       }
     };
 
+    const runId = ++this.recommendationRunId;
+
     this.errorMessage.set('');
     this.runStatus.set('evaluating');
-    window.setTimeout(() => this.runStatus.set('recommending'), 450);
+    window.setTimeout(() => {
+      if (this.recommendationRunId === runId && this.runStatus() === 'evaluating') {
+        this.runStatus.set('recommending');
+      }
+    }, 450);
 
     this.api.runRecommendations(request, this.candidates()).subscribe({
       next: (result) => {
@@ -341,6 +348,7 @@ export class App implements OnInit {
   }
 
   private fail(message: string): void {
+    this.recommendationRunId++;
     this.runStatus.set('failed');
     this.errorMessage.set(message);
   }

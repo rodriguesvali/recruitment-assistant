@@ -2,18 +2,23 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { App } from './app';
 import { RecruitmentApiService } from './recruitment-api.service';
-import { RecruitmentRunResult } from './recruitment.models';
+import { CandidateProfile, RecruitmentRunResult } from './recruitment.models';
 
 describe('App', () => {
   beforeEach(async () => {
+    HTMLElement.prototype.scrollIntoView ??= () => {};
+
+    const api = {
+      checkBackend: () => of(false),
+      runRecommendations: () => of(createRunResult('pending'))
+    };
+
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
         {
           provide: RecruitmentApiService,
-          useValue: {
-            checkBackend: () => of(false)
-          }
+          useValue: api
         }
       ]
     }).compileComponents();
@@ -49,7 +54,40 @@ describe('App', () => {
 
     expect(app.activeStep()).toBe(6);
   });
+
+  it('does not let the delayed recommending state overwrite a completed workflow', async () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    app.criteria.set(createRunResult('pending').criteria);
+    app.candidates.set([createCandidate()]);
+
+    app.runWorkflow();
+    await wait(500);
+
+    expect(app.runStatus()).toBe('complete');
+    expect(app.progressValue()).toBe(100);
+  });
 });
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function createCandidate(): CandidateProfile {
+  return {
+    candidate_id: 'cand-1',
+    display_name: 'Avery Chen',
+    profile_summary: 'Backend engineer with Python and API experience.',
+    skills: ['Python', 'FastAPI'],
+    experience: ['Built production APIs'],
+    location: 'Remote',
+    source_labels: ['seeded-data:test'],
+    missing_data: []
+  };
+}
 
 function createRunResult(status: RecruitmentRunResult['approval']['status']): RecruitmentRunResult {
   return {
