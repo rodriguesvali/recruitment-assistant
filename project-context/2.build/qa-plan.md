@@ -108,7 +108,7 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 | Execute Application Crew agent tests | Complete | Researcher, Evaluator, Recommender, and CrewAI blueprint checks passed. |
 | Execute frontend checks | Complete | Unit tests, build, and dev-server HTML smoke passed. |
 | Execute end-to-end tests | Complete | Live backend HTTP flow passed; browser-click automation not run. |
-| Document findings | Complete | Two open findings remain; QA-001, QA-002, QA-005, and QA-006 fixed and verified. |
+| Document findings | Complete | No QA findings remain open; QA-001 through QA-006 are fixed and verified. |
 
 ## Assumptions
 
@@ -125,11 +125,11 @@ This QA pass was executed on 2026-05-11 from `/workspace/recruitment-assistant`.
 
 ## Verification
 
-Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-001 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now covers offline/timeout fallback and HTTP validation/server error propagation in `RecruitmentApiService`. QA-002 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage that only backend-supported seeded dataset IDs are exposed. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. QA-006 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage for the delayed progress-state race. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
+Backend, agent, frontend unit, frontend build, and live HTTP checks passed on 2026-05-11. QA-001 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now covers offline/timeout fallback and HTTP validation/server error propagation in `RecruitmentApiService`. QA-002 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage that only backend-supported seeded dataset IDs are exposed. QA-004 was fixed and verified on 2026-05-18 with `PYTHONPATH=backend pytest -q backend/tests/test_api_smoke.py`; the backend suite now includes CORS preflight coverage for the documented fallback frontend port `4300`. QA-005 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`. QA-006 was fixed and verified on 2026-05-18 with `npm test -- --watch=false` and `npm run build` from `frontend/`; the frontend suite now includes regression coverage for the delayed progress-state race. Full browser-click automation was not executed because no browser binary or Playwright dependency is currently available in the workspace.
 
 ## Handoff Notes
 
 - MVP is functionally ready for a guided local demo on the default backend `8000` and frontend `4200` ports.
 - Before a production-like demo, keep fallback behavior limited to backend-offline or timeout failures so API validation/server defects remain visible.
-- Keep the app on CORS-approved frontend ports or update backend CORS for any alternate demo port.
+- Keep README-documented frontend ports aligned with backend CORS if future alternate demo ports are added.
 - Add browser e2e coverage for seeded happy path, pasted profiles, uploaded text, empty source, backend-unavailable fallback, and approval capture when the team adds a browser test runner.
