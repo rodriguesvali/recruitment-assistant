@@ -150,6 +150,12 @@ class RecruitmentRunResult(BaseModel):
     approval: RecruiterApproval = Field(default_factory=RecruiterApproval)
 
 
+class CrewAIRecommendationOutput(BaseModel):
+    evaluations: list[CandidateEvaluation]
+    ranked_shortlist: list[RankedRecommendation]
+    warnings: list[WorkflowWarning] = Field(default_factory=list)
+
+
 class HealthResponse(BaseModel):
     status: str = "ok"
     service: str = "recruitment-assistant-backend"

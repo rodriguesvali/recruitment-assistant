@@ -1,15 +1,50 @@
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass
+from typing import Any
 
 from app.schemas.recruitment import (
     CandidateEvaluation,
     CandidateProfile,
+    CrewAIRecommendationOutput,
     EvaluationCriteria,
     RankedRecommendation,
     WorkflowWarning,
 )
 from app.services.candidate_sources import CandidateSourceService
+
+logger = logging.getLogger(__name__)
+
+
+def crewai_tracing_enabled() -> bool:
+    return os.getenv("CREWAI_TRACING_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+
+
+def crewai_model_name() -> str:
+    provider = os.getenv("CREWAI_PROVIDER", "google").lower()
+    model = os.getenv("CREWAI_MODEL", "gemini-3.1-pro-preview")
+    if "/" in model:
+        return model
+    if provider in {"google", "gemini"}:
+        return f"gemini/{model}"
+    return model
+
+
+def build_crewai_llm() -> Any:
+    from crewai import LLM
+
+    provider = os.getenv("CREWAI_PROVIDER", "google").lower()
+    llm_provider = "gemini" if provider == "google" else provider
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("OPENAI_API_KEY") or None
+    return LLM(
+        model=crewai_model_name(),
+        provider=llm_provider,
+        api_key=api_key,
+        temperature=0.1,
+        timeout=int(os.getenv("CREWAI_TIMEOUT_SECONDS", "120")),
+    )
 
 
 @dataclass
@@ -214,49 +249,77 @@ def build_crewai_blueprint() -> dict[str, object]:
     }
 
 
-def build_crewai_crew():
+def build_crewai_crew(llm: Any | None = None):
     """Build the CrewAI crew object for environments that enable live agent execution."""
     from crewai import Agent, Crew, Process, Task
+
+    tracing_enabled = crewai_tracing_enabled()
+    llm = llm or build_crewai_llm()
+    logger.info(
+        "crewai.crew.build",
+        extra={
+            "tracing_enabled": tracing_enabled,
+            "model": crewai_model_name(),
+            "provider": os.getenv("CREWAI_PROVIDER", "google").lower(),
+        },
+    )
 
     researcher = Agent(
         role=ResearcherAgent.role,
         goal=ResearcherAgent.goal,
         backstory="You normalize approved candidate data and preserve source labels without scraping.",
+        llm=llm,
         verbose=False,
     )
     evaluator = Agent(
         role=EvaluatorAgent.role,
         goal=EvaluatorAgent.goal,
         backstory="You evaluate job-related evidence consistently and mark missing evidence as unknown.",
+        llm=llm,
         verbose=False,
     )
     recommender = Agent(
         role=RecommenderAgent.role,
         goal=RecommenderAgent.goal,
         backstory="You prepare ranked decision-support recommendations that require recruiter approval.",
+        llm=llm,
         verbose=False,
     )
 
     tasks = [
         Task(
-            description="Normalize approved candidate input into structured candidate profiles.",
-            expected_output="Candidate profiles with source labels and missing-data notes.",
+            description=(
+                "Review the approved candidate profiles for the role criteria. Preserve candidate_id, display_name, "
+                "source_labels, and missing_data exactly as supplied. Do not invent candidates or scrape external data.\n\n"
+                "Criteria JSON:\n{criteria_json}\n\nCandidate profiles JSON:\n{candidates_json}"
+            ),
+            expected_output="A concise normalization note confirming which approved candidate IDs will be evaluated.",
             agent=researcher,
         ),
         Task(
-            description="Score candidates against role criteria and identify strengths, gaps, and unknowns.",
-            expected_output="Candidate evaluations with component scores and rationale.",
+            description=(
+                "Evaluate each approved candidate against the role criteria using only supplied evidence. "
+                "For every candidate_id, assign fit_label as strong, moderate, or low, an overall_score from 0 to 100, "
+                "component_scores, strengths, gaps, unknowns, and a rationale tied to job-related criteria."
+            ),
+            expected_output="Candidate evaluations for every supplied candidate_id.",
             agent=evaluator,
         ),
         Task(
-            description="Rank evaluated candidates and prepare recruiter-reviewable recommendations.",
-            expected_output="Ranked shortlist with rationale, caveats, next steps, and disclosure.",
+            description=(
+                "Rank the evaluated candidates and return recruiter-reviewable recommendations. "
+                "The response must include evaluations, ranked_shortlist, and warnings. "
+                "Use only the supplied candidate IDs and keep all recommendations as decision support requiring recruiter review."
+            ),
+            expected_output="A CrewAIRecommendationOutput object with evaluations, ranked_shortlist, and warnings.",
             agent=recommender,
+            output_pydantic=CrewAIRecommendationOutput,
         ),
     ]
     return Crew(
         agents=[researcher, evaluator, recommender],
         tasks=tasks,
         process=Process.sequential,
+        tracing=tracing_enabled,
         verbose=False,
     )

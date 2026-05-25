@@ -7,7 +7,11 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_ENV: docker
-      CREWAI_TELEMETRY_OPT_OUT: "true"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      LOG_FORMAT: "${LOG_FORMAT:-json}"
+      RECRUITMENT_EXECUTION_MODE: "${RECRUITMENT_EXECUTION_MODE:-deterministic}"
+      CREWAI_TRACING_ENABLED: "${CREWAI_TRACING_ENABLED:-true}"
+      CREWAI_TELEMETRY_OPT_OUT: "${CREWAI_TELEMETRY_OPT_OUT:-false}"
       CREWAI_MODEL: "${CREWAI_MODEL:-gemini-3.1-pro-preview}"
       CREWAI_PROVIDER: "${CREWAI_PROVIDER:-google}"
       GOOGLE_API_KEY: "${GOOGLE_API_KEY:-}"

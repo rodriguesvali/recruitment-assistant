@@ -40,7 +40,11 @@ Local non-Docker development remains supported with:
 | `APP_ENV` | `docker` in Compose | No | Used to identify container runtime. |
 | `BACKEND_PORT` | `8000` | No | Host port mapped to backend container port `8000`. |
 | `FRONTEND_PORT` | `4200` | No | Host port mapped to frontend container port `80`. |
-| `CREWAI_TELEMETRY_OPT_OUT` | `true` | No | Keeps demo telemetry disabled by default. |
+| `LOG_LEVEL` | `INFO` | No | Backend application log verbosity. |
+| `LOG_FORMAT` | `json` | No | Backend log format; `json` is preferred for container logs, `text` is available for local debugging. |
+| `RECRUITMENT_EXECUTION_MODE` | `deterministic` | No | Uses local deterministic agents by default. Set to `crewai_live` to make `/api/recommendations/run` execute `Crew.kickoff()` and emit CrewAI trace batches. |
+| `CREWAI_TRACING_ENABLED` | `true` | No | Enables CrewAI AOP/AMP tracing for live Application Crew execution. Requires `crewai login` before traces appear in the dashboard. |
+| `CREWAI_TELEMETRY_OPT_OUT` | `false` | No | Allows CrewAI tracing/telemetry for the requested monitored demo path. Set to `true` only when tracing must be disabled. |
 | `GOOGLE_API_KEY` | empty | No for MVP | Deterministic API path does not require live LLM credentials. Required only if future live CrewAI execution is enabled. |
 | `CREWAI_MODEL` | `gemini-3.1-pro-preview` | No for MVP | Present for future live CrewAI configuration. |
 | `CREWAI_PROVIDER` | `google` | No for MVP | Present for future live CrewAI configuration. |
@@ -146,6 +150,8 @@ Operational notes:
 | Verify Compose/config build | Blocked | Docker CLI is not installed in this workspace; `docker compose config` returned `docker: command not found`. |
 | Verify backend tests | Complete | `PYTHONPATH=backend pytest -q backend/tests` passed with 5 tests. |
 | Verify frontend build | Complete | `npm run build` from `frontend/` passed. |
+| Add monitoring and logging plan | Complete | Added `project-context/3.deliver/monitoring-plan.md` with logging, viewing, tracing, and status details. |
+| Enable CrewAI AOP/AMP trace collection | Complete | Operator ran `crewai login`; `crewai traces enable` succeeded; `CREWAI_TRACING_ENABLED=true crewai traces status` reports enabled. |
 | Cloud deployment decision | Deferred | Requires runtime API URL externalization, access controls, persistence, monitoring, and legal/HR review. |
 
 ## Sources
