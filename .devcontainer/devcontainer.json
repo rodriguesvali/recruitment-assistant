@@ -39,7 +39,9 @@
         "charliermarsh.ruff",
         "Angular.ng-template",
         "esbenp.prettier-vscode",
-        "ms-azuretools.vscode-docker"
+        "ms-azuretools.vscode-docker",
+        "openai.chatgpt",
+        "rodriguesvali.git-revision-graph"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
